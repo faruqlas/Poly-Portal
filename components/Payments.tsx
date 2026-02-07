@@ -1,10 +1,12 @@
 
-import React, { useState, useMemo } from 'react';
-import { Student, RRRTransaction } from '../types';
-import { MOCK_RRR_TRANSACTIONS } from '../constants';
+import React, { useState } from 'react';
+import { Student, RRRTransaction, Transaction } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface PaymentsProps {
   student: Student;
+  transactions: Transaction[];
+  setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
 }
 
 const feeCategories = [
@@ -17,46 +19,57 @@ const feeCategories = [
   { id: 'library', label: 'Library Due', amount: 1000 },
 ];
 
-const Payments: React.FC<PaymentsProps> = ({ student }) => {
+const Payments: React.FC<PaymentsProps> = ({ student, transactions, setTransactions }) => {
   const [activeTab, setActiveTab] = useState<'pay' | 'history'>('pay');
   const [selectedFee, setSelectedFee] = useState(feeCategories[0]);
-  const [currentRRR, setCurrentRRR] = useState<RRRTransaction | null>(null);
+  const [currentRRR, setCurrentRRR] = useState<Transaction | null>(null);
   const [step, setStep] = useState<'select' | 'invoice'>('select');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [localHistory, setLocalHistory] = useState<RRRTransaction[]>(MOCK_RRR_TRANSACTIONS);
 
-  const generateRRR = () => {
+  const generateRRR = async () => {
     setIsSyncing(true);
-    setTimeout(() => {
-      const rrr = `${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
-      const newRRR: RRRTransaction = {
-        rrr,
-        studentId: student.matricNumber || student.id,
-        studentName: student.name,
-        amount: selectedFee.amount,
-        feeType: selectedFee.label,
-        dateGenerated: new Date().toISOString().split('T')[0],
-        status: 'Generated'
-      };
-      setCurrentRRR(newRRR);
-      setLocalHistory([newRRR, ...localHistory]);
-      setIsSyncing(false);
-      setStep('invoice');
-    }, 1500);
+    const rrr = `${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+    
+    const newTransaction = {
+      studentId: student.id,
+      amount: selectedFee.amount,
+      category: selectedFee.label,
+      reference: rrr,
+      status: 'Generated',
+      paymentChannel: 'Card',
+    };
+
+    const { data, error } = await supabase.from('transactions').insert(newTransaction).select().single();
+
+    if (data && !error) {
+        setCurrentRRR(data);
+        setTransactions([data, ...transactions]);
+        setStep('invoice');
+    } else {
+        alert('Failed to generate RRR. Please try again.');
+    }
+    setIsSyncing(false);
   };
 
-  const handleVerify = (rrrCode: string) => {
+  const handleVerify = async (rrrCode: string) => {
     setIsSyncing(true);
-    setTimeout(() => {
-      setLocalHistory(prev => prev.map(t => 
-        t.rrr === rrrCode ? { ...t, status: 'Paid', paymentChannel: 'Card', paymentDate: new Date().toISOString().split('T')[0] } : t
-      ));
-      if (currentRRR?.rrr === rrrCode) {
-        setCurrentRRR(prev => prev ? { ...prev, status: 'Paid', paymentChannel: 'Card', paymentDate: new Date().toISOString().split('T')[0] } : null);
-      }
-      setIsSyncing(false);
-      alert('Payment Verified Successfully! Your record has been updated.');
-    }, 1500);
+    const { data, error } = await supabase
+        .from('transactions')
+        .update({ status: 'Verified', paymentChannel: 'Card' })
+        .eq('reference', rrrCode)
+        .select()
+        .single();
+    
+    if (data && !error) {
+        setTransactions(prev => prev.map(t => t.reference === rrrCode ? data : t));
+        if (currentRRR?.reference === rrrCode) {
+            setCurrentRRR(data);
+        }
+        alert('Payment Verified Successfully! Your record has been updated.');
+    } else {
+        alert('Verification failed.');
+    }
+    setIsSyncing(false);
   };
 
   const handlePrint = () => {
@@ -144,9 +157,9 @@ const Payments: React.FC<PaymentsProps> = ({ student }) => {
                     <div className="text-right">
                       <p className="text-[10px] font-black uppercase opacity-60">Status</p>
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                        currentRRR.status === 'Paid' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-amber-900'
+                        currentRRR.status === 'Verified' ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-amber-900'
                       }`}>
-                        {currentRRR.status === 'Paid' ? 'Payment Confirmed' : 'RRR Generated'}
+                        {currentRRR.status === 'Verified' ? 'Payment Confirmed' : 'RRR Generated'}
                       </span>
                     </div>
                   </div>
@@ -156,12 +169,12 @@ const Payments: React.FC<PaymentsProps> = ({ student }) => {
                       <div className="space-y-4">
                         <div>
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Remitter Details</p>
-                          <p className="text-lg font-black text-slate-800 uppercase">{currentRRR.studentName}</p>
-                          <p className="text-xs font-mono font-bold text-slate-500">{currentRRR.studentId} • {student.department}</p>
+                          <p className="text-lg font-black text-slate-800 uppercase">{student.name}</p>
+                          <p className="text-xs font-mono font-bold text-slate-500">{student.id} • {student.department}</p>
                         </div>
                         <div>
                           <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Service Description</p>
-                          <p className="text-sm font-bold text-slate-600">{currentRRR.feeType} - {student.session} Session</p>
+                          <p className="text-sm font-bold text-slate-600">{currentRRR.category} - {student.session} Session</p>
                         </div>
                       </div>
                       <div className="text-right">
@@ -173,7 +186,7 @@ const Payments: React.FC<PaymentsProps> = ({ student }) => {
                     <div className="bg-slate-50 p-10 rounded-[32px] border border-slate-100 flex flex-col items-center text-center space-y-4">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">Remita Retrieval Reference (RRR)</p>
                       <p className="text-4xl font-mono font-black text-navy-primary tracking-widest bg-white px-8 py-4 rounded-2xl shadow-sm border border-slate-100">
-                        {currentRRR.rrr}
+                        {currentRRR.reference}
                       </p>
                       <p className="text-[10px] font-bold text-slate-400 max-w-sm leading-relaxed uppercase">
                         Present this RRR code at any commercial bank in Nigeria or use the "Pay Now" button to use your debit card.
@@ -187,7 +200,7 @@ const Payments: React.FC<PaymentsProps> = ({ student }) => {
                       </div>
                       <div className="text-right">
                         <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Authenticated On</p>
-                        <p className="text-xs font-bold text-slate-700">{currentRRR.dateGenerated}</p>
+                        <p className="text-xs font-bold text-slate-700">{new Date(currentRRR.createdAt).toLocaleDateString()}</p>
                       </div>
                     </div>
                   </div>
@@ -209,7 +222,7 @@ const Payments: React.FC<PaymentsProps> = ({ student }) => {
                   </button>
                   {currentRRR.status === 'Generated' && (
                     <button 
-                      onClick={() => handleVerify(currentRRR.rrr)}
+                      onClick={() => handleVerify(currentRRR.reference)}
                       disabled={isSyncing}
                       className="btn-accent flex-[1.5] py-4 text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2"
                     >
@@ -250,19 +263,19 @@ const Payments: React.FC<PaymentsProps> = ({ student }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
-                {localHistory.map(txn => (
-                  <tr key={txn.rrr} className="hover:bg-slate-50 transition-all">
-                    <td className="px-8 py-6 font-mono text-xs font-black text-slate-800">{txn.rrr}</td>
+                {transactions.map(txn => (
+                  <tr key={txn.reference} className="hover:bg-slate-50 transition-all">
+                    <td className="px-8 py-6 font-mono text-xs font-black text-slate-800">{txn.reference}</td>
                     <td className="px-8 py-6">
-                      <p className="text-sm font-bold text-slate-800">{txn.feeType}</p>
-                      <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest">{txn.dateGenerated}</p>
+                      <p className="text-sm font-bold text-slate-800">{txn.category}</p>
+                      <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest">{new Date(txn.createdAt).toLocaleDateString()}</p>
                     </td>
                     <td className="px-8 py-6 text-center">
                       <span className="text-sm font-black font-mono text-slate-700">₦{txn.amount.toLocaleString()}</span>
                     </td>
                     <td className="px-8 py-6 text-center">
                       <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase border ${
-                        txn.status === 'Paid' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
+                        txn.status === 'Verified' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
                         txn.status === 'Generated' ? 'bg-amber-50 text-amber-700 border-amber-100' : 'bg-slate-100 text-slate-400 border-slate-200'
                       }`}>
                         {txn.status}
@@ -271,7 +284,7 @@ const Payments: React.FC<PaymentsProps> = ({ student }) => {
                     <td className="px-8 py-6 text-right">
                       {txn.status === 'Generated' ? (
                         <button 
-                          onClick={() => { setCurrentRRR(txn); setStep('invoice'); }}
+                          onClick={() => { setCurrentRRR(txn); setActiveTab('pay'); setStep('invoice'); }}
                           className="text-navy-primary text-[10px] font-black uppercase hover:underline"
                         >
                           Complete Payment

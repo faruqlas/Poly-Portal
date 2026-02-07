@@ -1,13 +1,14 @@
 
 import React from 'react';
-import { View } from '../types';
-import { ICONS, MOCK_STUDENT } from '../constants';
+import { View, Student } from '../types';
+import { ICONS } from '../constants';
 
 interface DashboardProps {
     setActiveView: (view: View) => void;
+    student: Student;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setActiveView, student }) => {
     const dashboardItems: { view: View; label: string; description: string }[] = [
         { view: 'course-registration', label: 'Course Registration', description: 'Register for the current semester courses.' },
         { view: 'results', label: 'View Results', description: 'Check and print your semester results.' },
@@ -20,14 +21,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
     return (
         <div className="space-y-8">
             <div className="p-6 bg-white rounded-lg shadow-md">
-                <h1 className="text-3xl font-bold text-slate-800">Welcome, {MOCK_STUDENT.name.split(' ')[0]}!</h1>
+                <h1 className="text-3xl font-bold text-slate-800">Welcome, {student.name.split(' ')[0]}!</h1>
                 <p className="mt-2 text-slate-600">
                     You are welcome to your portal. You can manage your academic activities here.
                 </p>
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <p><span className="font-semibold text-slate-700">Matric No:</span> {MOCK_STUDENT.matricNumber}</p>
-                    <p><span className="font-semibold text-slate-700">Department:</span> {MOCK_STUDENT.department}</p>
-                    <p><span className="font-semibold text-slate-700">Session:</span> {MOCK_STUDENT.session}</p>
+                    <p><span className="font-semibold text-slate-700">Matric No:</span> {student.matricNumber}</p>
+                    <p><span className="font-semibold text-slate-700">Department:</span> {student.department}</p>
+                    <p><span className="font-semibold text-slate-700">Session:</span> {student.session}</p>
                 </div>
             </div>
 
@@ -39,7 +40,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView }) => {
                         className="text-left p-6 bg-white rounded-lg shadow-md hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
                     >
                         <div className="flex items-center">
-                            <div className="p-3 bg-brand-blue-100 text-brand-blue-600 rounded-full">
+                            <div className="p-3 bg-brand-primary-100 text-brand-primary-600 rounded-full">
                                 {ICONS[item.view]}
                             </div>
                             <h3 className="ml-4 text-lg font-semibold text-slate-800">{item.label}</h3>

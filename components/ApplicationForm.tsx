@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Student } from '../types';
 
@@ -37,6 +36,7 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onComplete }) => {
 
         const newProspect: Student = {
             id: appNo,
+            createdAt: new Date().toISOString(),
             name: `${formData.firstName} ${formData.middleName} ${formData.surname}`.replace(/\s+/g, ' ').trim(),
             applicationNumber: appNo,
             department: formData.department,
@@ -50,7 +50,8 @@ const ApplicationForm: React.FC<ApplicationFormProps> = ({ onComplete }) => {
             status: 'Prospect',
             permissionLevel: 1,
             applicationFeePaid: false,
-            is_registered: false,
+            // Fix: Corrected property name from is_registered to isRegistered to match the Student type.
+            isRegistered: false,
             documents: []
         };
 

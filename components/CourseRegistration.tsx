@@ -1,20 +1,21 @@
 
 import React, { useState, useMemo } from 'react';
-import { MOCK_COURSES, MOCK_ALL_RESULTS } from '../constants';
 import { Course, Student, Result } from '../types';
 
 interface CourseRegistrationProps {
     student: Student;
-    setStudent: React.Dispatch<React.SetStateAction<Student>>;
+    setStudent: React.Dispatch<React.SetStateAction<Student | null>>;
+    courses: Course[];
+    allResults: Result[];
+    onRegister: (studentId: string, isRegistered: boolean) => void;
 }
 
-const CourseRegistration: React.FC<CourseRegistrationProps> = ({ student, setStudent }) => {
-    // Identify courses previously failed (Grade F) that haven't been passed yet
+const CourseRegistration: React.FC<CourseRegistrationProps> = ({ student, setStudent, courses, allResults, onRegister }) => {
     const carryOverCodes = useMemo(() => {
         const failedMap = new Map<string, Result>();
         const passedSet = new Set<string>();
 
-        MOCK_ALL_RESULTS.forEach(r => {
+        allResults.forEach(r => {
             if (r.grade === 'F') {
                 failedMap.set(r.courseCode, r);
             } else {
@@ -23,13 +24,12 @@ const CourseRegistration: React.FC<CourseRegistrationProps> = ({ student, setStu
         });
         
         return Array.from(failedMap.keys()).filter(code => !passedSet.has(code));
-    }, []);
+    }, [allResults]);
 
     const isCarryOver = (code: string) => carryOverCodes.includes(code);
 
-    // Prioritize: Carry-Overs first, then Compulsory, then Electives
     const sortedCourses = useMemo(() => {
-        return [...MOCK_COURSES].sort((a, b) => {
+        return [...courses].sort((a, b) => {
             const aCO = isCarryOver(a.code);
             const bCO = isCarryOver(b.code);
             if (aCO && !bCO) return -1;
@@ -40,14 +40,14 @@ const CourseRegistration: React.FC<CourseRegistrationProps> = ({ student, setStu
             
             return a.code.localeCompare(b.code);
         });
-    }, [carryOverCodes]);
+    }, [courses, carryOverCodes]);
 
     const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
-    const [submitted, setSubmitted] = useState(student.is_registered);
+    const [submitted, setSubmitted] = useState(student.isRegistered);
 
     const handleCourseToggle = (courseCode: string) => {
         if (submitted) return;
-        const course = MOCK_COURSES.find(c => c.code === courseCode);
+        const course = courses.find(c => c.code === courseCode);
         if (isCarryOver(courseCode) || course?.type === 'Compulsory') return;
 
         setSelectedCourses(prev => {
@@ -57,12 +57,12 @@ const CourseRegistration: React.FC<CourseRegistrationProps> = ({ student, setStu
     };
 
     const registeredCourses = useMemo(() => {
-        return MOCK_COURSES.filter(course => 
+        return courses.filter(course => 
             course.type === 'Compulsory' || 
             isCarryOver(course.code) || 
             selectedCourses.includes(course.code)
         );
-    }, [selectedCourses, carryOverCodes]);
+    }, [courses, selectedCourses, carryOverCodes]);
 
     const totalUnits = useMemo(() => {
         return registeredCourses.reduce((sum, course) => sum + course.units, 0);
@@ -75,10 +75,10 @@ const CourseRegistration: React.FC<CourseRegistrationProps> = ({ student, setStu
     const handleSubmit = () => {
         if (totalUnits > 24) return;
         setSubmitted(true);
-        setStudent(prev => ({ ...prev, is_registered: true }));
+        onRegister(student.id, true);
     };
 
-    const TypeBadge = ({ type, isCO }: { type: 'Compulsory' | 'Elective', isCO: boolean }) => {
+    const TypeBadge = ({ type, isCO }: { type: string, isCO: boolean }) => {
         if (isCO) {
             return (
                 <span className="inline-flex items-center px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-amber-500 text-white shadow-lg shadow-amber-500/20">

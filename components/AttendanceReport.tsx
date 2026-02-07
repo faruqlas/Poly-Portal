@@ -101,13 +101,13 @@ const AttendanceReport: React.FC = () => {
                         </thead>
                         <tbody className="text-[11px] font-medium text-slate-500">
                             {MOCK_ATTENDANCE.map((record, index) => {
-                                // Fixed: Explicitly define type of accumulator and current value to allow correct indexing
-                                const stats = Object.values(record.days).reduce((acc, curr) => {
+                                // Fix: Explicitly define type of accumulator to allow correct indexing and resolve TS errors.
+                                const stats = Object.values(record.days).reduce((acc: Record<AttendanceStatus, number>, curr) => {
                                     if (curr && (curr === 'P' || curr === 'A' || curr === 'L' || curr === 'H')) {
                                         acc[curr]++;
                                     }
                                     return acc;
-                                }, { P: 0, A: 0, L: 0, H: 0 } as Record<AttendanceStatus, number>);
+                                }, { P: 0, A: 0, L: 0, H: 0 });
 
                                 const totalDaysTaken = stats.P + stats.A + stats.L;
                                 const percentage = totalDaysTaken > 0 ? Math.round((stats.P / totalDaysTaken) * 100) : 0;

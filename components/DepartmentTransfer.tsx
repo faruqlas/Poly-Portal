@@ -1,8 +1,13 @@
 
 import React, { useState } from 'react';
-import { MOCK_STUDENT, DEPARTMENTS } from '../constants';
+import { DEPARTMENTS } from '../constants';
+import { Student } from '../types';
 
-const DepartmentTransfer: React.FC = () => {
+interface DepartmentTransferProps {
+    student: Student;
+}
+
+const DepartmentTransfer: React.FC<DepartmentTransferProps> = ({ student }) => {
     const [targetDepartment, setTargetDepartment] = useState('');
     const [reason, setReason] = useState('');
     const [submitted, setSubmitted] = useState(false);
@@ -18,6 +23,7 @@ const DepartmentTransfer: React.FC = () => {
     };
 
     const confirmSubmission = () => {
+        // In a real app, this would call a Supabase function
         setSubmitted(true);
         setShowConfirmModal(false);
     };
@@ -51,7 +57,7 @@ const DepartmentTransfer: React.FC = () => {
                 <form onSubmit={handleInitialSubmit} className="space-y-6">
                     <div>
                         <label htmlFor="currentDepartment" className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Current Academic Base</label>
-                        <input id="currentDepartment" type="text" value={MOCK_STUDENT.department} disabled className="w-full px-4 py-3 text-sm font-bold opacity-60 cursor-not-allowed" />
+                        <input id="currentDepartment" type="text" value={student.department} disabled className="w-full px-4 py-3 text-sm font-bold opacity-60 cursor-not-allowed" />
                     </div>
                     <div>
                         <label htmlFor="targetDepartment" className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">New Department (Destination)</label>
@@ -63,7 +69,7 @@ const DepartmentTransfer: React.FC = () => {
                             required
                         >
                             <option value="">Select target department...</option>
-                            {DEPARTMENTS.filter(d => d !== MOCK_STUDENT.department).map(dept => (
+                            {DEPARTMENTS.filter(d => d !== student.department).map(dept => (
                                 <option key={dept} value={dept}>{dept}</option>
                             ))}
                         </select>
@@ -117,7 +123,7 @@ const DepartmentTransfer: React.FC = () => {
                                 <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                     <div className="text-center flex-1">
                                         <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Current</p>
-                                        <p className="text-xs font-bold text-slate-800 line-clamp-1">{MOCK_STUDENT.department}</p>
+                                        <p className="text-xs font-bold text-slate-800 line-clamp-1">{student.department}</p>
                                     </div>
                                     <div className="px-4 text-navy-primary">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>

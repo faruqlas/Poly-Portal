@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { LibraryBook, LibraryLoan, Student } from '../types';
 import CirculationTerminal from './CirculationTerminal';
@@ -30,7 +29,8 @@ const LibraryManagementPortal: React.FC<LibraryManagementPortalProps> = ({ stude
             return;
         }
 
-        if (!student.is_jamb_verified) {
+        // Fix: Corrected property name from is_jamb_verified to isJambVerified.
+        if (!student.isJambVerified) {
             showToast('Registry Block: Student JAMB credentials not yet verified by Registrar.', 'error');
             return;
         }

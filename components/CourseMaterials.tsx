@@ -7,12 +7,6 @@ interface CourseMaterialsProps {
 }
 
 const CourseMaterials: React.FC<CourseMaterialsProps> = ({ student }) => {
-    // Determine which courses the student is currently associated with (based on session/semester)
-    const activeCourseCodes = useMemo(() => {
-        return MOCK_ALL_RESULTS
-            .filter(r => r.session === student.session && r.semester === student.semester)
-            .map(r => r.courseCode);
-    }, [student]);
 
     const groupedMaterials = useMemo(() => {
         const groups: Record<string, CourseMaterial[]> = {};
@@ -43,7 +37,6 @@ const CourseMaterials: React.FC<CourseMaterialsProps> = ({ student }) => {
                 <p className="text-slate-500 text-sm mt-1">Download slides, assignments, and required reading lists for your registered courses.</p>
             </div>
 
-            {/* Use Object.keys instead of Object.entries to ensure 'mats' is correctly typed as CourseMaterial[] */}
             {Object.keys(groupedMaterials).map((code) => {
                 const mats = groupedMaterials[code];
                 return (

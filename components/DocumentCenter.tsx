@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Student, StudentDocument } from '../types';
 
@@ -7,7 +6,7 @@ declare const jspdf: any;
 
 interface DocumentCenterProps {
     student: Student;
-    setStudent: React.Dispatch<React.SetStateAction<Student>>;
+    setStudent: React.Dispatch<React.SetStateAction<Student | null>>;
 }
 
 const DocumentUploadCenter: React.FC<DocumentCenterProps> = ({ student, setStudent }) => {
@@ -55,6 +54,9 @@ const DocumentUploadCenter: React.FC<DocumentCenterProps> = ({ student, setStude
             
             const newDoc: StudentDocument = {
                 id: `DOC-${Date.now()}`,
+                // Fix: Added missing properties createdAt and studentId to satisfy the StudentDocument type.
+                createdAt: new Date().toISOString(),
+                studentId: student.id,
                 name: file.name,
                 type: activeUploadType,
                 fileType: file.type,
@@ -64,13 +66,13 @@ const DocumentUploadCenter: React.FC<DocumentCenterProps> = ({ student, setStude
                 url: cloudUrl
             };
 
-            setStudent(prev => ({
+            setStudent(prev => prev ? ({
                 ...prev,
                 documents: [
                     ...prev.documents.filter(d => d.type !== activeUploadType), // Replace existing slot if any
                     newDoc
                 ]
-            }));
+            }) : null);
             
             setActiveUploadType(null);
         } catch (error: any) {
@@ -84,7 +86,7 @@ const DocumentUploadCenter: React.FC<DocumentCenterProps> = ({ student, setStude
     const handlePayApplicationFee = () => {
         setIsProcessingPayment(true);
         setTimeout(() => {
-            setStudent(prev => ({ ...prev, applicationFeePaid: true }));
+            setStudent(prev => prev ? ({ ...prev, applicationFeePaid: true }) : null);
             setIsProcessingPayment(false);
         }, 1500);
     };
@@ -166,7 +168,7 @@ const DocumentUploadCenter: React.FC<DocumentCenterProps> = ({ student, setStude
             {/* Main Upload Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {uploadSlots.map(type => {
-                    const doc = student.documents.find(d => d.type === type);
+                    const doc = student.documents?.find(d => d.type === type);
                     const status = doc ? doc.status : 'Not Uploaded';
                     const isTypeUploading = isUploading === type;
 

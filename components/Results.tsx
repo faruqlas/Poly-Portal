@@ -1,9 +1,7 @@
 
-import { MOCK_ALL_RESULTS, MOCK_EXAM_TIMETABLE } from '../constants';
-import { ExamSchedule, Result, Student } from '../types';
+import { ExamSchedule, Result, Student, Course } from '../types';
 import React, { useEffect, useMemo, useState } from 'react';
 
-// Declare global variables for the libraries loaded via CDN
 declare const html2canvas: any;
 declare const jspdf: any;
 
@@ -19,20 +17,20 @@ type TimetableSortConfig = {
 
 interface ResultsProps {
     student: Student;
+    allResults: Result[];
+    courses: Course[];
 }
 
-const Results: React.FC<ResultsProps> = ({ student }) => {
+const MOCK_EXAM_TIMETABLE: ExamSchedule[] = [
+    { courseCode: 'COM 211', courseTitle: 'Java I', date: '2024-06-10', time: '09:00 AM - 11:00 AM', venue: 'Hall A' },
+    { courseCode: 'COM 212', courseTitle: 'Web Development', date: '2024-06-12', time: '12:00 PM - 02:00 PM', venue: 'Hall B' },
+];
+
+const Results: React.FC<ResultsProps> = ({ student, allResults, courses }) => {
     const [activeTab, setActiveTab] = useState<'results' | 'timetable'>('results');
     const [isLoading, setIsLoading] = useState(true);
-    const [showNotificationToast, setShowNotificationToast] = useState<{msg: string, title: string} | null>(null);
-    const [showFilters, setShowFilters] = useState(false);
     
     const gradePoints: { [key: string]: number } = { 'A': 5, 'B': 4, 'C': 3, 'D': 2, 'E': 1, 'F': 0 };
-
-    const [reminders, setReminders] = useState<string[]>(() => {
-        const saved = localStorage.getItem('exam_reminders');
-        return saved ? JSON.parse(saved) : [];
-    });
 
     useEffect(() => {
         setIsLoading(true);
@@ -41,18 +39,12 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
         }, 800);
         return () => clearTimeout(timer);
     }, [student.id, activeTab]);
-
-    useEffect(() => {
-        localStorage.setItem('exam_reminders', JSON.stringify(reminders));
-    }, [reminders]);
-
-    // Carry-over detection for tracking unresolved failures
+    
     const outstandingCarryOvers = useMemo(() => {
         const failedMap = new Map<string, Result>();
         const passedSet = new Set<string>();
 
-        // Process chronological results to see if an F was ever cleared by a subsequent pass
-        MOCK_ALL_RESULTS.forEach(r => {
+        allResults.forEach(r => {
             if (r.grade === 'F') {
                 failedMap.set(r.courseCode, r);
             } else if (gradePoints[r.grade] > 0) {
@@ -61,14 +53,14 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
         });
 
         return Array.from(failedMap.values()).filter(r => !passedSet.has(r.courseCode));
-    }, [gradePoints]);
+    }, [allResults, gradePoints]);
 
     const { sessions, chronologicalPeriods, availableSemesters } = useMemo(() => {
         const sessionSet = new Set<string>();
         const periodSet = new Set<string>();
         const semesterSet = new Set<string>();
 
-        MOCK_ALL_RESULTS.forEach(r => {
+        allResults.forEach(r => {
             sessionSet.add(r.session);
             semesterSet.add(r.semester);
             periodSet.add(`${r.session}|${r.semester}`);
@@ -90,33 +82,8 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
             chronologicalPeriods: periods,
             availableSemesters: Array.from(semesterSet).sort()
         };
-    }, []);
-
-    const carryOverStatusMap = useMemo(() => {
-        const map = new Map<string, boolean>(); 
-        const failedCourses = new Set<string>();
-
-        chronologicalPeriods.forEach(period => {
-            const periodResults = MOCK_ALL_RESULTS.filter(r => r.session === period.session && r.semester === period.semester);
-            
-            periodResults.forEach(res => {
-                const key = `${res.session}|${res.semester}|${res.courseCode}`;
-                if (failedCourses.has(res.courseCode)) {
-                    map.set(key, true);
-                }
-                if (res.grade === 'F') {
-                    failedCourses.add(res.courseCode);
-                }
-            });
-        });
-        return map;
-    }, [chronologicalPeriods]);
-
-    const isCarryOverResult = (result: Result) => {
-        return carryOverStatusMap.get(`${result.session}|${result.semester}|${result.courseCode}`) || false;
-    };
+    }, [allResults]);
     
-    // DEFAULT LOGIC: Initially show the student's current session and semester
     const [selectedSession, setSelectedSession] = useState(
         sessions.includes(student.session) ? student.session : (sessions[0] || '')
     );
@@ -125,47 +92,24 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
         availableSemesters.includes(student.semester) ? student.semester : 'all'
     );
     
-    const [sortConfig, setSortConfig] = useState<SortConfig>(null);
-    const [timetableSortConfig, setTimetableSortConfig] = useState<TimetableSortConfig>({ key: 'date', direction: 'asc' });
-    const [columnFilters, setColumnFilters] = useState<Partial<Record<keyof Result, string>>>({});
-    const [timetableSearch, setTimetableSearch] = useState('');
-
     const processedResults = useMemo(() => {
-        let results = MOCK_ALL_RESULTS.filter(r => {
+        let results = allResults.filter(r => {
             const matchesSession = r.session === selectedSession;
             const matchesSemester = selectedSemester === 'all' || r.semester === selectedSemester;
             return matchesSession && matchesSemester;
         });
 
-        (Object.keys(columnFilters) as Array<keyof Result>).forEach((key) => {
-            const value = columnFilters[key];
-            if (value) {
-                results = results.filter(r => {
-                    const cellValue = String(r[key]).toLowerCase();
-                    return cellValue.includes(value.toLowerCase());
-                });
-            }
-        });
+        return results.map(r => ({...r, courseTitle: courses.find(c => c.code === r.courseCode)?.title || 'N/A' }));
 
-        if (sortConfig) {
-            results.sort((a, b) => {
-                const aValue = a[sortConfig.key];
-                const bValue = b[sortConfig.key];
-                if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
-        return results;
-    }, [selectedSession, selectedSemester, sortConfig, columnFilters]);
+    }, [selectedSession, selectedSemester, allResults, courses]);
 
     const periodGPA = useMemo(() => {
-        const results = MOCK_ALL_RESULTS.filter(r => r.session === selectedSession && (selectedSemester === 'all' || r.semester === selectedSemester));
+        const results = allResults.filter(r => r.session === selectedSession && (selectedSemester === 'all' || r.semester === selectedSemester));
         const totalUnits = results.reduce((sum, result) => sum + result.units, 0);
         if (totalUnits === 0) return '0.00';
         const totalPoints = results.reduce((sum, result) => sum + (gradePoints[result.grade] * result.units), 0);
         return (totalPoints / totalUnits).toFixed(2);
-    }, [selectedSession, selectedSemester]);
+    }, [selectedSession, selectedSemester, allResults, gradePoints]);
 
     const cgpa = useMemo(() => {
         let latestPeriodIndex = -1;
@@ -177,14 +121,14 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
 
         if (latestPeriodIndex === -1) return '0.00';
         const periodsToInclude = chronologicalPeriods.slice(0, latestPeriodIndex + 1);
-        const resultsToInclude = MOCK_ALL_RESULTS.filter(r => 
+        const resultsToInclude = allResults.filter(r => 
             periodsToInclude.some(p => p.session === r.session && p.semester === r.semester)
         );
         const totalUnits = resultsToInclude.reduce((sum, result) => sum + result.units, 0);
         if (totalUnits === 0) return '0.00';
         const totalPoints = resultsToInclude.reduce((sum, result) => sum + (gradePoints[result.grade] * result.units), 0);
         return (totalPoints / totalUnits).toFixed(2);
-    }, [selectedSession, selectedSemester, chronologicalPeriods]);
+    }, [selectedSession, selectedSemester, chronologicalPeriods, allResults, gradePoints]);
 
     return (
         <div className="space-y-6 relative">
@@ -205,7 +149,6 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
 
             {activeTab === 'results' && (
                 <div className="space-y-6">
-                    {/* CARRY-OVER TRACKER CARD */}
                     {outstandingCarryOvers.length > 0 && (
                         <div className="bg-amber-50 rounded-[32px] border-2 border-amber-200 p-8 shadow-sm animate-in slide-in-from-top-4 duration-500 print:hidden">
                             <div className="flex items-center gap-4 mb-6">
@@ -222,7 +165,7 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
                                     <div key={co.courseCode} className="bg-white p-4 rounded-2xl border border-amber-100 flex items-center justify-between group hover:border-amber-400 transition-all">
                                         <div>
                                             <p className="text-xs font-black text-amber-600">{co.courseCode}</p>
-                                            <p className="text-sm font-bold text-slate-800 line-clamp-1">{co.courseTitle}</p>
+                                            <p className="text-sm font-bold text-slate-800 line-clamp-1">{courses.find(c => c.code === co.courseCode)?.title}</p>
                                         </div>
                                         <div className="text-right">
                                             <span className="text-[10px] font-black text-rose-500 uppercase">Grade F</span>
@@ -289,25 +232,16 @@ const Results: React.FC<ResultsProps> = ({ student }) => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {processedResults.map((result) => {
-                                        const isCO = isCarryOverResult(result);
-                                        return (
-                                            <tr key={`${result.session}-${result.semester}-${result.courseCode}`} className={`hover:bg-slate-50 transition-colors ${isCO ? 'bg-amber-50/40 border-l-4 border-amber-400' : ''}`}>
-                                                <td className="py-3 px-4 text-sm font-medium text-slate-800">
-                                                    <div className="flex items-center gap-2">
-                                                        {result.courseCode}
-                                                        {isCO && (
-                                                            <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[8px] font-black uppercase rounded shadow-sm">Carry-Over</span>
-                                                        )}
-                                                    </div>
-                                                </td>
+                                    {processedResults.map((result) => (
+                                            <tr key={`${result.session}-${result.semester}-${result.courseCode}`} className={`hover:bg-slate-50 transition-colors`}>
+                                                <td className="py-3 px-4 text-sm font-medium text-slate-800">{result.courseCode}</td>
                                                 <td className="py-3 px-4 text-sm text-slate-700 font-medium">{result.courseTitle}</td>
                                                 <td className="py-3 px-4 text-center text-sm text-slate-700 font-bold">{result.units}</td>
                                                 <td className="py-3 px-4 text-center text-sm text-slate-700 font-bold">{result.score}</td>
                                                 <td className={`py-3 px-4 text-center font-black text-sm ${result.grade === 'F' ? 'text-rose-600' : 'text-slate-900'}`}>{result.grade}</td>
                                             </tr>
-                                        );
-                                    })}
+                                        )
+                                    )}
                                     {processedResults.length === 0 && (
                                         <tr>
                                             <td colSpan={5} className="py-12 text-center">

@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { DEPARTMENTS } from '../constants';
-import { StudentFinancialRecord, Transaction, AuditEntry } from '../types';
+import { StudentFinancialRecord, Transaction, Student } from '../types';
 
 interface BursaryPortalProps {
     records: StudentFinancialRecord[];
@@ -10,9 +9,10 @@ interface BursaryPortalProps {
     onSyncRecord: (record: StudentFinancialRecord) => void;
     transactions: Transaction[];
     setTransactions: React.Dispatch<React.SetStateAction<Transaction[]>>;
+    students: Student[];
 }
 
-const BursaryPortal: React.FC<BursaryPortalProps> = ({ records, setRecords, onSyncRecord, transactions, setTransactions }) => {
+const BursaryPortal: React.FC<BursaryPortalProps> = ({ records, setRecords, onSyncRecord, transactions, setTransactions, students }) => {
     const [activeSubView, setActiveSubView] = useState<'dashboard' | 'manual'>('dashboard');
     const [isSyncing, setIsSyncing] = useState(false);
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
@@ -28,21 +28,27 @@ const BursaryPortal: React.FC<BursaryPortalProps> = ({ records, setRecords, onSy
 
     const handleVerifyPayment = (e: React.FormEvent) => {
         e.preventDefault();
-        const student = records.find(r => r.studentId === verifyStudentId || r.matricNumber === verifyStudentId);
+        // Fix: Use the students prop to find the student, then use the student's ID to find their financial record.
+        const student = students.find(s => s.id === verifyStudentId || s.matricNumber === verifyStudentId);
         if (!student) {
-            showToast('Student identity not found in Bursary records.', 'error');
+            showToast('Student identity not found.', 'error');
+            return;
+        }
+        const record = records.find(r => r.studentId === student.id);
+        if (!record) {
+            showToast('Student financial record not found in Bursary records.', 'error');
             return;
         }
 
         setIsSyncing(true);
         setTimeout(() => {
             const amountNum = Number(verifyAmount);
-            const updatedPaid = student.amountPaid + amountNum;
-            const balance = Math.max(0, student.totalFees - updatedPaid);
+            const updatedPaid = record.amountPaid + amountNum;
+            const balance = Math.max(0, record.totalFees - updatedPaid);
             const isCleared = balance === 0;
 
             const updatedRecord: StudentFinancialRecord = {
-                ...student,
+                ...record,
                 amountPaid: updatedPaid,
                 balance,
                 isCleared,
@@ -53,11 +59,13 @@ const BursaryPortal: React.FC<BursaryPortalProps> = ({ records, setRecords, onSy
             
             const newTxn: Transaction = {
                 id: `TXN-${Date.now()}`,
-                studentId: student.studentId,
+                // Fix: Changed 'date' to 'createdAt' to match Transaction type
+                createdAt: new Date().toISOString(),
+                studentId: student.id,
+                // Fix: Added studentName to the transaction object
                 studentName: student.name,
                 amount: amountNum,
                 category: 'Tuition',
-                date: new Date().toISOString().split('T')[0],
                 reference: verifyRef,
                 status: 'Verified'
             };
@@ -75,11 +83,11 @@ const BursaryPortal: React.FC<BursaryPortalProps> = ({ records, setRecords, onSy
         const totalRevenue = transactions.filter(t => t.status === 'Verified').reduce((a, b) => a + b.amount, 0);
         const revenueByDept = DEPARTMENTS.map(dept => ({
             name: dept.substring(0, 5),
-            value: records.filter(r => r.department === dept).reduce((a, b) => a + b.amountPaid, 0)
+            value: records.filter(r => students.find(s => s.id === r.studentId)?.department === dept).reduce((a, b) => a + b.amountPaid, 0)
         })).filter(d => d.value > 0);
 
         return { totalRevenue, revenueByDept };
-    }, [transactions, records]);
+    }, [transactions, records, students]);
 
     return (
         <div className="space-y-6">

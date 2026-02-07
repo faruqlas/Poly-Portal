@@ -1,16 +1,21 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { MOCK_HOSTELS, MOCK_ROOM_TYPES, MOCK_STUDENT } from '../constants';
-import { HostelBuilding, RoomType, Room, HostelAllocationRequest } from '../types';
+import { HostelBuilding, RoomType, Room, HostelAllocationRequest, Student } from '../types';
 
 interface HostelManagementPortalProps {
     rooms: Room[];
     setRooms: React.Dispatch<React.SetStateAction<Room[]>>;
     requests: HostelAllocationRequest[];
     setRequests: React.Dispatch<React.SetStateAction<HostelAllocationRequest[]>>;
+    students: Student[];
 }
 
-const HostelManagementPortal: React.FC<HostelManagementPortalProps> = ({ rooms, setRooms, requests, setRequests }) => {
+const MOCK_HOSTELS: HostelBuilding[] = [
+    { id: 'HOS1', name: 'Queen Amina Hall', gender: 'Female', totalRooms: 100, location: 'North Campus' },
+    { id: 'HOS2', name: 'King Jaja Hall', gender: 'Male', totalRooms: 120, location: 'South Campus' },
+];
+
+const HostelManagementPortal: React.FC<HostelManagementPortalProps> = ({ rooms, setRooms, requests, setRequests, students }) => {
     const [activeSubView, setActiveSubView] = useState<'dashboard' | 'queue'>('dashboard');
     const [toast, setToast] = useState<{ msg: string, type: 'success' | 'error' } | null>(null);
 
@@ -20,12 +25,12 @@ const HostelManagementPortal: React.FC<HostelManagementPortalProps> = ({ rooms, 
     };
 
     const handleAllocate = (requestId: string, roomId: string) => {
-        // Cross-portal integrity check: ensure hostel fee is paid via Bursary global state
         const request = requests.find(r => r.id === requestId);
         if (!request) return;
 
-        const isPaid = MOCK_STUDENT.is_hostel_fee_paid; // In real app, check global financialRecords state
-        if (!isPaid) {
+        const student = students.find(s => s.id === request.studentId);
+        
+        if (!student?.isHostelFeePaid) {
             showToast('Allocation Denied: No record of Hostel Fee payment in Bursary stream.', 'error');
             return;
         }

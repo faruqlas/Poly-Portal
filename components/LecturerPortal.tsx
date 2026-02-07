@@ -1,12 +1,18 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { MOCK_LECTURER, MOCK_LECTURER_COURSES, MOCK_BOOKS, MOCK_MATERIALS } from '../constants';
-import { LecturerCourse, StudentScore, Book, Lecturer, CourseMaterial } from '../types';
+import { MOCK_LECTURER, MOCK_LECTURER_COURSES, MOCK_MATERIALS, DEPARTMENTS } from '../constants';
+// Fix: Import 'Course' and 'Result' types.
+import { LecturerCourse, StudentScore, Book, Lecturer, CourseMaterial, Student, Course, Result } from '../types';
 import Library from './Library';
 
 type SubView = 'overview' | 'courses' | 'ca-upload' | 'exam-upload' | 'attendance' | 'library' | 'hostel' | 'profile' | 'manage-materials';
 
-const LecturerPortal: React.FC = () => {
+interface LecturerPortalProps {
+    students: Student[];
+    courses: Course[];
+    results: Result[];
+}
+
+const LecturerPortal: React.FC<LecturerPortalProps> = ({ students, courses, results }) => {
     const [activeSubView, setActiveSubView] = useState<SubView>('overview');
     const [selectedCourse, setSelectedCourse] = useState<LecturerCourse | null>(null);
     const [scores, setScores] = useState<StudentScore[]>([]);
@@ -27,15 +33,20 @@ const LecturerPortal: React.FC = () => {
 
     // Mock students for the selected course
     const mockStudents = useMemo(() => {
-        return Array.from({ length: selectedCourse?.studentsEnrolled || 0 }, (_, i) => ({
-            matricNumber: `POLY/CS/21/${String(i + 1).padStart(3, '0')}`,
-            studentName: ['John Doe', 'Sarah Smith', 'Ahmed Musa', 'Chioma Uzor', 'Adebayo Tunde', 'Blessing Okafor'][i % 6],
+        if (!selectedCourse) return [];
+        const studentIdsWithCourse = results.filter(r => r.courseCode === selectedCourse.code).map(r => r.studentId);
+        const enrolledStudents = students.filter(s => studentIdsWithCourse.includes(s.id));
+
+        return enrolledStudents.slice(0, selectedCourse.studentsEnrolled).map(s => ({
+            matricNumber: s.matricNumber || s.applicationNumber || 'N/A',
+            studentName: s.name,
             caScore: 0,
             examScore: 0,
             total: 0,
             grade: 'F'
         }));
-    }, [selectedCourse]);
+    }, [selectedCourse, students, results]);
+
 
     useEffect(() => {
         if (selectedCourse) {
@@ -92,7 +103,7 @@ const LecturerPortal: React.FC = () => {
         setMaterials(prev => prev.filter(m => m.id !== id));
     };
 
-    const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleProfileInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setLecturerData(prev => ({ ...prev, [name]: value }));
     };
@@ -162,6 +173,7 @@ const LecturerPortal: React.FC = () => {
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
                             <select 
                                 value={newMaterialType}
+// FIX: Corrected a typo from `newMaterialType` to `setNewMaterialType` to call the state setter function.
                                 onChange={(e) => setNewMaterialType(e.target.value as any)}
                                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue-500 transition-all"
                             >
@@ -388,6 +400,35 @@ const LecturerPortal: React.FC = () => {
                                 type="text" 
                                 name="name"
                                 value={lecturerData.name}
+                                onChange={handleProfileInputChange}
+                                className="w-full px-4 py-3 border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all text-slate-700"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                        <label className="text-sm font-medium text-slate-500">Department</label>
+                        <div className="md:col-span-3">
+                            <select
+                                name="department"
+                                value={lecturerData.department}
+                                onChange={handleProfileInputChange}
+                                className="w-full px-4 py-3 border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all text-slate-700"
+                            >
+                                {DEPARTMENTS.map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4">
+                        <label className="text-sm font-medium text-slate-500">Rank</label>
+                        <div className="md:col-span-3">
+                            <input 
+                                type="text" 
+                                name="rank"
+                                value={lecturerData.rank}
                                 onChange={handleProfileInputChange}
                                 className="w-full px-4 py-3 border border-slate-200 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-slate-300 transition-all text-slate-700"
                             />

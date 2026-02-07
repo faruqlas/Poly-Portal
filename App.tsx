@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from './supabaseClient';
-import { View, Student, UserRole, StudentFinancialRecord, Transaction, LibraryBook, LibraryLoan, HostelAllocationRequest, Room, ROLE_PERMISSIONS } from './types';
+import { View, Student, UserRole, StudentFinancialRecord, Transaction, LibraryBook, LibraryLoan, HostelAllocationRequest, Room, ROLE_PERMISSIONS, Course, Result } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -41,7 +40,7 @@ const App: React.FC = () => {
     const [isApplying, setIsApplying] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
 
-    // CENTRALIZED DATA REPOSITORY (Now fetched from Supabase)
+    // CENTRALIZED DATA REPOSITORY
     const [students, setStudents] = useState<Student[]>([]);
     const [currentUser, setCurrentUser] = useState<Student | null>(null);
     const [allFinancialRecords, setAllFinancialRecords] = useState<StudentFinancialRecord[]>([]);
@@ -50,6 +49,8 @@ const App: React.FC = () => {
     const [allLibraryLoans, setAllLibraryLoans] = useState<LibraryLoan[]>([]);
     const [allRooms, setAllRooms] = useState<Room[]>([]);
     const [allHostelRequests, setAllHostelRequests] = useState<HostelAllocationRequest[]>([]);
+    const [allCourses, setAllCourses] = useState<Course[]>([]);
+    const [allResults, setAllResults] = useState<Result[]>([]);
 
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,6 +71,8 @@ const App: React.FC = () => {
                 setAllLibraryLoans([]);
                 setAllRooms([]);
                 setAllHostelRequests([]);
+                setAllCourses([]);
+                setAllResults([]);
             }
         });
 
@@ -80,14 +83,12 @@ const App: React.FC = () => {
         const fetchData = async () => {
             if (session) {
                 setIsLoading(true);
-                // Fetch user profile to determine role
                 const { data: profile } = await supabase.from('profiles').select('role, student_id').eq('id', session.user.id).single();
                 
                 if (profile) {
                     setUserRole(profile.role);
                     
-                    // Fetch all institutional data
-                    const [studentsRes, financialsRes, txnsRes, booksRes, loansRes, roomsRes, requestsRes] = await Promise.all([
+                    const [studentsRes, financialsRes, txnsRes, booksRes, loansRes, roomsRes, requestsRes, coursesRes, resultsRes] = await Promise.all([
                         supabase.from('students').select('*'),
                         supabase.from('financial_records').select('*'),
                         supabase.from('transactions').select('*'),
@@ -95,6 +96,8 @@ const App: React.FC = () => {
                         supabase.from('library_loans').select('*'),
                         supabase.from('rooms').select('*'),
                         supabase.from('hostel_requests').select('*'),
+                        supabase.from('courses').select('*'),
+                        supabase.from('results').select('*'),
                     ]);
 
                     setStudents(studentsRes.data || []);
@@ -104,14 +107,15 @@ const App: React.FC = () => {
                     setAllLibraryLoans(loansRes.data || []);
                     setAllRooms(roomsRes.data || []);
                     setAllHostelRequests(requestsRes.data || []);
+                    setAllCourses(coursesRes.data || []);
+                    setAllResults(resultsRes.data || []);
 
-                    // If user is a student, fetch their specific record
                     if (profile.role === 'Student' && profile.student_id) {
-                        const { data: studentData } = await supabase.from('students').select('*, documents:documents(*)').eq('id', profile.student_id).single();
+                        const { data: studentData } = await supabase.from('students').select('*, documents(*)').eq('id', profile.student_id).single();
                         setCurrentUser(studentData);
                     } else if (studentsRes.data && studentsRes.data.length > 0) {
-                        // Fallback for non-student roles to have a default user context
-                        const { data: studentData } = await supabase.from('students').select('*, documents:documents(*)').eq('id', 'STU001').single();
+                        // Fallback for non-student roles to have a default user context (using the seed user)
+                        const { data: studentData } = await supabase.from('students').select('*, documents(*)').eq('id', 'STU001').single();
                         setCurrentUser(studentData);
                     }
                 }
@@ -121,27 +125,38 @@ const App: React.FC = () => {
         fetchData();
     }, [session]);
     
-    // DATA SYNCHRONIZATION ENGINES (Now async Supabase calls)
+    // DATA SYNCHRONIZATION ENGINES
     const syncFinancialRecord = async (updatedRecord: StudentFinancialRecord) => {
-        const { data, error } = await supabase.from('financial_records').update(updatedRecord).eq('student_id', updatedRecord.studentId).select().single();
+        const { data, error } = await supabase.from('financial_records').update(updatedRecord).eq('studentId', updatedRecord.studentId).select().single();
         if (data && !error) {
             setAllFinancialRecords(prev => prev.map(r => r.studentId === data.studentId ? data : r));
         }
     };
 
     const syncJambVerification = async (studentId: string, isVerified: boolean) => {
-        const { data, error } = await supabase.from('students').update({ is_jamb_verified: isVerified }).eq('id', studentId).select().single();
+        const { data, error } = await supabase.from('students').update({ isJambVerified: isVerified }).eq('id', studentId).select().single();
         if (data && !error) {
             setStudents(prev => prev.map(s => s.id === data.id ? data : s));
+            if(currentUser?.id === data.id) setCurrentUser(data);
         }
     };
+    
+    const syncRegistration = async (studentId: string, isRegistered: boolean) => {
+        const { data, error } = await supabase.from('students').update({ isRegistered: isRegistered }).eq('id', studentId).select().single();
+        if (data && !error) {
+            setStudents(prev => prev.map(s => s.id === data.id ? data : s));
+            if (currentUser?.id === data.id) {
+                setCurrentUser(prev => prev ? { ...prev, isRegistered: data.isRegistered } : null);
+            }
+        }
+    };
+
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
         setActiveView('dashboard');
     };
 
-    // PERMISSION CHECKER
     const hasPermission = (view: View): boolean => {
         if (!userRole) return false;
         return ROLE_PERMISSIONS[userRole]?.includes(view) ?? false;
@@ -180,29 +195,28 @@ const App: React.FC = () => {
             );
         }
 
-        // Render views but ensure currentUser is not null for student-specific views
         if (!currentUser) {
-            // This can be a loading spinner or a message
             return <div className="text-center p-12">Loading user data...</div>;
         }
 
         switch (activeView) {
-            case 'dashboard': return <Dashboard setActiveView={setActiveView} />;
-            case 'bursary-portal': return <BursaryPortal records={allFinancialRecords} setRecords={setAllFinancialRecords} onSyncRecord={syncFinancialRecord} transactions={allTransactions} setTransactions={setAllTransactions} />;
-            case 'exams-records-portal': return <ExamsRecordsPortal financialRecords={allFinancialRecords} />;
-            case 'registrar-portal': return <RegistrarPortal onVerifyStudent={syncJambVerification} />;
+            case 'dashboard': return <Dashboard setActiveView={setActiveView} student={currentUser} />;
+            // Fix: Pass the 'students' array to BursaryPortal to allow for student name lookups.
+            case 'bursary-portal': return <BursaryPortal students={students} records={allFinancialRecords} setRecords={setAllFinancialRecords} onSyncRecord={syncFinancialRecord} transactions={allTransactions} setTransactions={setAllTransactions} />;
+            case 'exams-records-portal': return <ExamsRecordsPortal financialRecords={allFinancialRecords} students={students} allResults={allResults} />;
+            case 'registrar-portal': return <RegistrarPortal onVerifyStudent={syncJambVerification} students={students} />;
             case 'library-management-portal': return <LibraryManagementPortal students={students} books={allLibraryBooks} setBooks={setAllLibraryBooks} loans={allLibraryLoans} setLoans={setAllLibraryLoans} />;
-            case 'course-registration': return <CourseRegistration student={currentUser} setStudent={setCurrentUser} />;
-            case 'payments': return <Payments student={currentUser} />;
-            case 'results': return <Results student={currentUser} />;
+            case 'course-registration': return <CourseRegistration student={currentUser} setStudent={setCurrentUser} courses={allCourses} allResults={allResults} onRegister={syncRegistration} />;
+            case 'payments': return <Payments student={currentUser} transactions={allTransactions.filter(t => t.studentId === currentUser.id)} setTransactions={setAllTransactions} />;
+            case 'results': return <Results student={currentUser} allResults={allResults.filter(r => r.studentId === currentUser.id)} courses={allCourses} />;
             case 'profile': return <Profile student={currentUser} setStudent={setCurrentUser} />;
             case 'document-center': return <DocumentUploadCenter student={currentUser} setStudent={setCurrentUser} />;
             case 'letter-printing': return <LetterPrinting student={currentUser} />;
-            case 'admissions-portal': return <AdmissionsPortal />;
-            case 'lecturer-portal': return <LecturerPortal />;
-            case 'hostel-management-portal': return <HostelManagementPortal rooms={allRooms} setRooms={setAllRooms} requests={allHostelRequests} setRequests={setAllHostelRequests} />;
-            case 'super-admin-portal': return <ExecutiveInsights />;
-            default: return <Dashboard setActiveView={setActiveView} />;
+            case 'admissions-portal': return <AdmissionsPortal allStudents={students} setAllStudents={setStudents} />;
+            case 'lecturer-portal': return <LecturerPortal students={students} courses={allCourses} results={allResults} />;
+            case 'hostel-management-portal': return <HostelManagementPortal rooms={allRooms} setRooms={setAllRooms} requests={allHostelRequests} setRequests={setAllHostelRequests} students={students} />;
+            case 'super-admin-portal': return <ExecutiveInsights students={students} transactions={allTransactions} records={allFinancialRecords} books={allLibraryBooks} rooms={allRooms}/>;
+            default: return <Dashboard setActiveView={setActiveView} student={currentUser} />;
         }
     };
 
@@ -210,7 +224,6 @@ const App: React.FC = () => {
         return <Auth />;
     }
     
-    // This is a simple landing page router
     if (!session && !window.location.pathname.startsWith('/app')) {
         return <LandingPage onSignIn={() => window.history.pushState({}, '', '/app')} onApply={() => setIsApplying(true)} />;
     }

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MOCK_BOOKS } from '../constants';
 import { Book } from '../types';

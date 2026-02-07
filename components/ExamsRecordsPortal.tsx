@@ -1,27 +1,34 @@
 
 import React, { useState, useMemo } from 'react';
-import { MOCK_STUDENT, MOCK_ALL_RESULTS } from '../constants';
-import { Result, StudentFinancialRecord } from '../types';
+import { Result, StudentFinancialRecord, Student } from '../types';
 
 interface ExamsRecordsPortalProps {
     financialRecords: StudentFinancialRecord[];
+    students: Student[];
+    allResults: Result[];
 }
 
 interface UploadedResult extends Result {
     studentName: string;
     matricNumber: string;
-    id: string;
 }
 
-const MOCK_UPLOAD_QUEUE: UploadedResult[] = [
-    { id: '1', matricNumber: 'POLY/CS/21/001', studentName: 'Adebayo Chukwuemeka', courseCode: 'COM 211', courseTitle: 'Java I', units: 3, score: 85, grade: 'A', session: '2023/2024', semester: 'First Semester' },
-    { id: '2', matricNumber: 'POLY/CS/21/002', studentName: 'Blessing Okafor', courseCode: 'COM 211', courseTitle: 'Java I', units: 3, score: 105, grade: 'A', session: '2023/2024', semester: 'First Semester' }, // ANOMALY
-    { id: '3', matricNumber: 'POLY/CS/21/003', studentName: 'Sarah Smith', courseCode: 'COM 211', courseTitle: 'Java I', units: 3, score: -5, grade: 'F', session: '2023/2024', semester: 'First Semester' },  // ANOMALY
-    { id: '4', matricNumber: 'POLY/CS/21/004', studentName: 'Ibrahim Musa', courseCode: 'COM 211', courseTitle: 'Java I', units: 3, score: 72, grade: 'B', session: '2023/2024', semester: 'First Semester' },
-    { id: '5', matricNumber: 'POLY/CS/21/005', studentName: 'Chinelo Azikiwe', courseCode: 'COM 211', courseTitle: 'Java I', units: 3, score: 250, grade: 'A', session: '2023/2024', semester: 'First Semester' }, // ANOMALY
-];
+const ExamsRecordsPortal: React.FC<ExamsRecordsPortalProps> = ({ financialRecords, students, allResults }) => {
+    const MOCK_UPLOAD_QUEUE: UploadedResult[] = useMemo(() => students.slice(0, 5).map((s, i) => ({
+        id: s.id,
+        matricNumber: s.matricNumber || `PENDING-${i}`,
+        studentName: s.name,
+        courseCode: 'COM 211',
+        courseTitle: 'Java I',
+        units: 3,
+        score: [85, 105, -5, 72, 250][i % 5],
+        grade: 'A',
+        session: '2023/2024',
+        semester: 'First Semester',
+        createdAt: new Date().toISOString(),
+        studentId: s.id
+    })), [students]);
 
-const ExamsRecordsPortal: React.FC<ExamsRecordsPortalProps> = ({ financialRecords }) => {
     const [activeSubView, setActiveSubView] = useState<'performance' | 'processing' | 'clearance'>('performance');
     const [uploadQueue, setUploadQueue] = useState<UploadedResult[]>(MOCK_UPLOAD_QUEUE);
     const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
@@ -82,7 +89,7 @@ const ExamsRecordsPortal: React.FC<ExamsRecordsPortalProps> = ({ financialRecord
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
-                                {[MOCK_STUDENT].map(student => {
+                                {students.map(student => {
                                     const cleared = getClearance(student.id);
                                     return (
                                         <tr key={student.id} className="hover:bg-slate-50/50 transition-all">

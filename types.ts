@@ -1,4 +1,3 @@
-
 export type View = 
   | 'dashboard'
   | 'application-form'
@@ -55,7 +54,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, View[]> = {
   ],
 };
 
-export type StudentStatus = 'Prospect' | 'Admitted' | 'Rejected';
+export type StudentStatus = 'Prospect' | 'Admitted' | 'Rejected' | string;
 
 export type RRRStatus = 'Generated' | 'Paid' | 'Expired' | 'Pending Verification' | 'Failed';
 
@@ -73,17 +72,20 @@ export interface RRRTransaction {
 
 export interface StudentDocument {
   id: string;
+  createdAt: string;
+  studentId: string;
   name: string;
-  type: 'O-Level Result' | 'Birth Certificate' | 'JAMB Result' | 'NIN' | 'LGA Certificate';
+  type: 'O-Level Result' | 'Birth Certificate' | 'JAMB Result' | 'NIN' | 'LGA Certificate' | string;
   fileType: string;
   fileSize: number;
   uploadDate: string;
-  status: 'Not Uploaded' | 'Pending Verification' | 'Verified' | 'Rejected';
+  status: 'Not Uploaded' | 'Pending Verification' | 'Verified' | 'Rejected' | string;
   url: string;
 }
 
 export interface Student {
   id: string;
+  createdAt: string;
   name: string;
   matricNumber?: string;
   applicationNumber?: string;
@@ -96,42 +98,36 @@ export interface Student {
   session: string;
   semester: string;
   status: StudentStatus;
-  permissionLevel: number; // 1: Applicant, 2: Admitted, 3: Matriculated
+  permissionLevel: number;
   applicationFeePaid: boolean;
-  is_registered: boolean;
-  documents: StudentDocument[];
-  is_fees_cleared?: boolean;
-  is_hostel_fee_paid?: boolean;
-  is_jamb_verified?: boolean;
+  isRegistered: boolean;
+  documents?: StudentDocument[];
+  isFeesCleared?: boolean;
+  isHostelFeePaid?: boolean;
+  isJambVerified?: boolean;
 }
 
 export interface Transaction {
   id: string;
+  createdAt: string;
   studentId: string;
-  studentName: string;
+  studentName?: string;
   amount: number;
-  category: 'Tuition' | 'Hostel' | 'Transcript' | 'Application' | 'Other';
-  date: string;
+  category: 'Tuition' | 'Hostel' | 'Transcript' | 'Application' | 'Other' | string;
   reference: string;
-  status: 'Pending' | 'Verified' | 'Failed' | 'Reversed';
-  // Added verifiedBy to resolve TS errors in constants.tsx
-  verifiedBy?: string;
-  // Added paymentChannel to resolve TS errors in constants.tsx
+  status: 'Pending' | 'Verified' | 'Failed' | 'Reversed' | string;
   paymentChannel?: string;
+  verifiedBy?: string;
 }
 
 export interface StudentFinancialRecord {
+  id: string;
   studentId: string;
-  matricNumber: string;
-  name: string;
-  department: string;
-  level: string;
   totalFees: number;
   amountPaid: number;
   balance: number;
   isCleared: boolean;
-  isRegCleared: boolean;
-  paymentStatus: 'No Payment' | 'Part Payment' | 'Fully Paid';
+  paymentStatus: 'No Payment' | 'Part Payment' | 'Fully Paid' | string;
 }
 
 export interface LibraryBook {
@@ -143,30 +139,29 @@ export interface LibraryBook {
   totalCopies: number;
   availableCopies: number;
   shelfLocation: string;
-  purchaseDate: string;
-  condition: 'Mint' | 'Good' | 'Fair' | 'Poor';
-  price: number;
 }
 
 export interface LibraryLoan {
   id: string;
   bookId: string;
+  // Fix: Add bookTitle and memberName to LibraryLoan type
   bookTitle: string;
   memberId: string;
   memberName: string;
   issueDate: string;
   dueDate: string;
   returnDate?: string;
-  status: 'Active' | 'Returned' | 'Overdue';
+  status: 'Active' | 'Returned' | 'Overdue' | string;
   fineAmount: number;
+  // FIX: Added missing property `isFineWaived` which is used in CirculationTerminal.tsx
   isFineWaived?: boolean;
 }
 
 export interface Room {
   id: string;
-  hostel_name: string;
-  room_number: string;
-  type_id: string;
+  hostelName: string;
+  roomNumber: string;
+  typeId: string;
   capacity: number;
   occupants: string[];
   isUnderMaintenance: boolean;
@@ -184,32 +179,34 @@ export interface HostelAllocationRequest {
 
 export interface Course {
   code: string;
+  createdAt: string;
   title: string;
   units: number;
-  type: 'Compulsory' | 'Elective';
+  type: 'Compulsory' | 'Elective' | string;
   prerequisites?: string[];
+  department: string;
 }
 
 export interface Result {
+  id: string;
+  createdAt: string;
+  studentId: string;
   courseCode: string;
-  courseTitle: string;
+  courseTitle: string; // This is in the DB table
   units: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+  grade: 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | string;
   score: number;
   session: string;
   semester: string;
 }
 
-// Added missing AttendanceStatus type
 export type AttendanceStatus = 'P' | 'A' | 'L' | 'H';
 
-// Added missing AttendanceRecord interface
 export interface AttendanceRecord {
   courseCode: string;
   days: Record<number, AttendanceStatus>;
 }
 
-// Added missing Candidate interface
 export interface Candidate {
   id: string;
   name: string;
@@ -217,13 +214,11 @@ export interface Candidate {
   photoUrl: string;
 }
 
-// Added missing ElectionPosition interface
 export interface ElectionPosition {
   title: string;
   candidates: Candidate[];
 }
 
-// Added missing Book interface
 export interface Book {
   id: string;
   title: string;
@@ -234,7 +229,6 @@ export interface Book {
   downloadUrl?: string;
 }
 
-// Added missing ExamSchedule interface
 export interface ExamSchedule {
   courseCode: string;
   courseTitle: string;
@@ -243,7 +237,6 @@ export interface ExamSchedule {
   venue: string;
 }
 
-// Added missing Lecturer interface
 export interface Lecturer {
   id: string;
   name: string;
@@ -256,7 +249,6 @@ export interface Lecturer {
   address: string;
 }
 
-// Added missing LecturerCourse interface
 export interface LecturerCourse {
   code: string;
   title: string;
@@ -266,7 +258,6 @@ export interface LecturerCourse {
   semester: string;
 }
 
-// Added missing CourseMaterial interface
 export interface CourseMaterial {
   id: string;
   courseCode: string;
@@ -276,10 +267,8 @@ export interface CourseMaterial {
   dateAdded: string;
 }
 
-// Added missing AdmissionStatus type
 export type AdmissionStatus = 'Pending' | 'Approved' | 'Rejected' | 'Waitlisted';
 
-// Added missing Applicant interface
 export interface Applicant {
   id: string;
   name: string;
@@ -295,7 +284,6 @@ export interface Applicant {
   rejectionReason?: string;
 }
 
-// Added missing HostelBuilding interface
 export interface HostelBuilding {
   id: string;
   name: string;
@@ -304,7 +292,6 @@ export interface HostelBuilding {
   location: string;
 }
 
-// Added missing RoomType interface
 export interface RoomType {
   id: string;
   name: string;
@@ -313,7 +300,6 @@ export interface RoomType {
   amenities: string[];
 }
 
-// Added missing LibraryMember interface
 export interface LibraryMember {
   id: string;
   name: string;
@@ -325,7 +311,6 @@ export interface LibraryMember {
   totalFinesOwed: number;
 }
 
-// Added missing LibraryRequest interface
 export interface LibraryRequest {
   id: string;
   bookId: string;
@@ -336,7 +321,6 @@ export interface LibraryRequest {
   status: 'Pending' | 'Approved' | 'Rejected';
 }
 
-// Added missing FeeStructure interface
 export interface FeeStructure {
   id: string;
   faculty: string;
@@ -347,7 +331,6 @@ export interface FeeStructure {
   otherCharges: number;
 }
 
-// Added missing GlobalAuditEntry interface
 export interface GlobalAuditEntry {
   id: string;
   timestamp: string;
@@ -357,7 +340,6 @@ export interface GlobalAuditEntry {
   details: string;
 }
 
-// Added missing AuditEntry interface
 export interface AuditEntry {
   id: string;
   timestamp: string;
@@ -365,7 +347,6 @@ export interface AuditEntry {
   details: string;
 }
 
-// Added missing StudentScore interface
 export interface StudentScore {
     matricNumber: string;
     studentName: string;

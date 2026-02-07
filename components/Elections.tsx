@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MOCK_ELECTIONS } from '../constants';
 import { Candidate } from '../types';

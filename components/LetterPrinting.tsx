@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Student } from '../types';
 
@@ -96,8 +95,9 @@ const LetterPrinting: React.FC<LetterPrintingProps> = ({ student }) => {
                 <TemplateCard 
                     title="Acceptance Letter"
                     description="Binding contract of acceptance submitted to the Academic Affairs Unit."
-                    status={student.is_registered ? 'Unlocked' : 'Locked'}
-                    disabled={!student.is_registered}
+                    // Fix: Corrected property name from is_registered to isRegistered.
+                    status={student.isRegistered ? 'Unlocked' : 'Locked'}
+                    disabled={!student.isRegistered}
                     icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                     onClick={() => handlePrint('acceptance')}
                 />
