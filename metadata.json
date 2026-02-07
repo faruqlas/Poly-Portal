@@ -1,0 +1,5 @@
+{
+  "name": "Polytechnic Student Portal",
+  "description": "A comprehensive student management system for a polytechnic, allowing students to manage courses, payments, requests, and other academic activities.",
+  "requestFramePermissions": []
+}

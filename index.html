@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF--8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Polytechnic Student Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'brand-primary': {
+                '50': '#f0fdfa',
+                '100': '#ccfbf1',
+                '200': '#99f6e4',
+                '300': '#5eead4',
+                '400': '#2dd4bf',
+                '500': '#14b8a6',
+                '600': '#0d9488',
+                '700': '#0f766e',
+                '800': '#115e59',
+                '900': '#134e4a',
+                '950': '#042f2e',
+              },
+              'brand-slate': {
+                '50': '#f8fafc',
+                '100': '#f1f5f9',
+                '200': '#e2e8f0',
+                '300': '#cbd5e1',
+                '400': '#94a3b8',
+                '500': '#64748b',
+                '600': '#475569',
+                '700': '#334155',
+                '800': '#1e293b',
+                '900': '#0f172a',
+                '950': '#020617',
+              },
+              'navy': {
+                'primary': '#004a7c',
+                'hover': '#003a61',
+              },
+              'accent-orange': {
+                'DEFAULT': '#FF7043',
+                'hover': '#f4511e',
+              },
+              'hitech': {
+                'orange': '#FF8C00',
+                'orange-hover': '#e67e00',
+              }
+            },
+            borderRadius: {
+              'lg': '8px',
+            }
+          }
+        }
+      }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "recharts": "https://esm.sh/recharts@2.12.7",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+  }
+}
+</script>
+<style>
+  /* Global Input and Button styles based on specific user requirements */
+  input, select, textarea {
+    background-color: #F8FAFC !important;
+    border-color: #E2E8F0 !important;
+    color: #1E293B !important;
+    border-radius: 0.5rem !important; /* rounded-lg (8px) */
+  }
+  
+  input::placeholder, select::placeholder, textarea::placeholder {
+    color: #94A3B8 !important;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    border-color: #004a7c !important;
+    box-shadow: 0 0 0 3px rgba(0, 74, 124, 0.15) !important;
+    outline: none !important;
+  }
+
+  .btn-primary {
+    background-color: #004a7c !important;
+    color: white !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover {
+    background-color: #003a61 !important;
+  }
+
+  .btn-accent {
+    background-color: #FF7043 !important;
+    color: white !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s;
+  }
+  .btn-accent:hover {
+    background-color: #f4511e !important;
+  }
+
+  .btn-secondary {
+    background-color: transparent !important;
+    border: 1px solid #CBD5E1 !important;
+    color: #475569 !important;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover {
+    background-color: #f8fafc !important;
+  }
+
+  @media print {
+    body {
+      background: white !important;
+    }
+    body * {
+      visibility: hidden;
+    }
+    #printable-area, #printable-area * {
+      visibility: visible;
+    }
+    #printable-area {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 10mm; 
+      background: white !important;
+    }
+    .bg-slate-900 { background-color: #0f172a !important; -webkit-print-color-adjust: exact; }
+    .text-white { color: #ffffff !important; }
+    .bg-brand-primary-700 { background-color: #0f766e !important; -webkit-print-color-adjust: exact; }
+    
+    @page {
+      size: A4;
+      margin: 0;
+    }
+  }
+
+  .executive-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .executive-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .executive-scrollbar::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 10px;
+  }
+  
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #134e4a;
+    border-radius: 10px;
+  }
+</style>
+</head>
+  <body class="bg-slate-50 antialiased">
+    <div id="root"></div>
+  </body>
+</html>
